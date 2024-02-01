@@ -18,8 +18,17 @@ def pathDToOneDrive(directory):
         dir = directory.__str__()[:2]+"\\OneDrive\\"+directory.__str__()[3:]
         return Path(dir)
 
+def paintingNames(path: Path,error_files,mismatch_files,directory):
+    are_same_directory = directory.__str__() == os.path.split(path)[0].__str__()
+    if path.name in error_files and are_same_directory:
+        return Fore.RED + path.name + Style.RESET_ALL
+    elif path.name in mismatch_files:
+        return Fore.YELLOW + path.name + Style.RESET_ALL
+    else:
+        return path.name
+
 #Creador de árbol recursivo
-def tree(dir_path: Path, prefix: str=''):
+def tree(dir_path: Path, error_files, mismatch_files,directory, prefix: str=''):
     # prefix components:
     space =  '    '
     branch = '│   '
@@ -29,20 +38,21 @@ def tree(dir_path: Path, prefix: str=''):
     """A recursive generator, given a directory Path object
     will yield a visual tree structure line by line
     with each line prefixed by the same characters
-    """    
+    """
     contents = list(dir_path.iterdir())
     # contents each get pointers that are ├── with a final └── :
     pointers = [tee] * (len(contents) - 1) + [last]
     for pointer, path in zip(pointers, contents):
-        yield prefix + pointer + path.name
+        object_name = paintingNames(path,error_files,mismatch_files,directory)
+        yield prefix + pointer + object_name
         if path.is_dir(): # extend the prefix and recurse:
             extension = branch if pointer == tee else space 
             # i.e. space because last, └── , above so no more |
-            yield from tree(path, prefix=prefix+extension)
+            yield from tree(path, error_files, mismatch_files, directory, prefix=prefix+extension)
 
-def dirSideToSidePrint(directory1, directory2):
+def dirSideToSidePrint(directory1, directory2,error_files, mismatch_files):
     fixwidht = 60
-    for line1,line2 in zip_longest(tree(directory1),tree(directory2),fillvalue = ""):
+    for line1,line2 in zip_longest(tree(directory1,error_files,mismatch_files,directory1),tree(directory2,error_files,mismatch_files,directory2),fillvalue = ""):
         if (line1 == ""):
             line1 = " "*60
         if (len(line1) > 60):
@@ -68,18 +78,24 @@ def makeFilePath(directory,object):
 def modificationTime(filepath):
     return os.stat(filepath).st_mtime
 
-def excecuteActions(filesToCopy,dirsToCopy):
-    print("Cambios en:")
-    for file in filesToCopy:
-        print(file[0])
-    for dir in dirsToCopy:
-        print(dir[0])
-    op = input("¿Realizar cambios? y para SI")
-    if op == "y":
-        for file in filesToCopy:
-            shutil.copy2(file[0],file[1])
-        for dir in dirsToCopy:
-            shutil.copytree(dir[0],dir[1])
+def describeActions(dirs_to_copy,dir_name,mismatch_files,error_files):
+    print()
+    print(Fore.GREEN + "Cambios que deben realizarse en los directorios base '{}':".format(dir_name) + Style.RESET_ALL)
+    print("Archivos a actualizar: ")
+    for file in mismatch_files:
+        print(Fore.YELLOW + file + Style.RESET_ALL)
+    print("Archivos o directorios faltantes por duplicar: ")
+    for file in error_files:
+        print(Fore.RED + file + Style.RESET_ALL)
+    for dir in dirs_to_copy:
+        print(Fore.RED + dir[0] + Style.RESET_ALL)
+    print()
+
+def excecuteActions(files_to_copy,dirs_to_copy):
+    for file in files_to_copy:
+        shutil.copy2(file[0],file[1])
+    for dir in dirs_to_copy:
+        shutil.copytree(dir[0],dir[1])
 
 def filesToActualize(mismatch_files,directory1,directory2,files_to_copy):
     for file in mismatch_files:
@@ -99,21 +115,12 @@ def objectsToDuplicate(dircmp,filesToCopy,dirsToCopy,directory1,directory2):
             destinationPath = makeFilePath(directory2,object)
             dirsToCopy.append((objectPath,destinationPath))
 
-def dirPathMaker(common_dirs,common_dirs_paths,directory):
+def dirPathCollector(common_dirs,common_dirs_paths,directory):
     for dir in common_dirs:
         dir_path = makeFilePath(directory,dir)
         common_dirs_paths.append(dir_path)
 
-def main(directory1):
-    print(Fore.GREEN + "Examinando la carpeta '{}'".format(os.path.basename(directory1)) + Style.RESET_ALL)
-    if directory1.__str__()[:11] == "D:\OneDrive":
-        directory2 = pathOneDriveToD(directory1)
-    else:
-        directory2 = pathDToOneDrive(directory1)
-
-    #DIRECTORIOS DE PRUEBAS
-    directory1 = Path("D:\OneDrive\Proyectos_Code\Python_STUF_I_MADE\\testing")
-    directory2 = Path("D:\OneDrive\Proyectos_Code\Python_STUF_I_MADE\\testing2")
+def main_workflow(directory1,directory2,dir_name):
 
     dcomp = filecmp.dircmp(directory1,directory2)
     
@@ -123,46 +130,79 @@ def main(directory1):
     dirRigthErrors = dcomp.right_only
     error_files = dirLeftErrors + dirRigthErrors
 
-    dirSideToSidePrint(directory1, directory2)
+    print(Fore.GREEN + '\nComparación de árboles de ambos directorios: '+ Style.RESET_ALL)
+    dirSideToSidePrint(directory1, directory2,error_files,mismatch_files)
     #print(Fore.RED + 'some red text'+ Style.RESET_ALL)
 
-    print("\nComparacion")
+    print(Fore.GREEN + "\nComparacion dentro de los directorios '{}'".format(dir_name) + Style.RESET_ALL)
     print("Iguales :", math_files)
     print("Diferentes :", mismatch_files)
     print("Faltantes :", error_files)
-    print()
 
     files_to_copy = []
-    
     if len(mismatch_files) > 0:
         filesToActualize(mismatch_files,directory1,directory2,files_to_copy)
     
     dirs_to_copy = []
-    
     if len(dirLeftErrors) > 0:
         objectsToDuplicate(dirLeftErrors,files_to_copy,dirs_to_copy,directory1,directory2)
-    
     if len(dirRigthErrors) > 0:
         objectsToDuplicate(dirRigthErrors,files_to_copy,dirs_to_copy,directory2,directory1)
     
     common_dirs_paths = []
     common_dirs = dcomp.common_dirs
     if len(common_dirs) > 0:
-        dirPathMaker(common_dirs,common_dirs_paths,directory1)
+        dirPathCollector(common_dirs,common_dirs_paths,directory1)
 
+    valid_ok = ["y","Y","1","si","ok","ya","OK"]
     if len(files_to_copy) > 0 or len(dirs_to_copy) > 0:
-        #excecuteActions(files_to_copy,dirs_to_copy)
-        pass
+        describeActions(dirs_to_copy,dir_name,mismatch_files,error_files)
+        op = input("¿Realizar cambios? (ingrese 1 , y ó si para aceptar): ")
+        if op in valid_ok:
+            excecuteActions(files_to_copy,dirs_to_copy)
+        else:
+            print("No se realizaron las acciones mencionadas")
     else:
         print("No hay acciones que realizar en la carpeta '{}'".format(os.path.basename(directory1)))
     
+    print()
     if len(common_dirs_paths) > 0:
+        print(Fore.GREEN + 'Hay subcarpetas disponibles: '+ Style.RESET_ALL)
         for dir in common_dirs_paths:
-            pass
-            #main(dir)
+            op = input("¿Desea analizar la subcarpeta '{}'? (ingrese 1 , y ó si para aceptar): ".format(os.path.split(dir)[1]))
+            main(dir,"THIS_IS_NOT_A_TEST")
+
+def main(directory1,test = "SI"):
+    dir_name = os.path.basename(directory1)
+    print(Fore.GREEN + "Examinando la carpeta '{}'".format(dir_name) + Style.RESET_ALL)
+    if directory1.__str__()[:11] == "D:\OneDrive":
+        directory2 = pathOneDriveToD(directory1)
+    else:
+        directory2 = pathDToOneDrive(directory1)
+    if not(os.path.isdir(directory2)):
+        print("{} no es un directorio válido".format(directory2))
+        if test != "SI":
+            return
+    
+    #DIRECTORIOS DE PRUEBAS
+    if test == "SI":
+        directory1 = Path("D:\OneDrive\Proyectos_Code\Python_STUF_I_MADE\\testing")
+        dir_name = os.path.basename(directory1)
+        directory2 = Path("D:\OneDrive\Proyectos_Code\Python_STUF_I_MADE\\testing2")
+
+    print("Paths examinados:")
+    print(directory1)
+    print(directory2)
+    main_workflow(directory1,directory2,dir_name)
+
 
 #set current working directory as the directory where this script is located
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
-directory = Path(os.getcwd())
+current_path = os.getcwd()
+directory = Path(current_path[:1].upper() + current_path[1:])
+
 #Stars script
-main(directory)
+print("\nMY FILE SYNCER :)\n")
+
+main(directory,"THIS_IS_NOT_A_TEST")
+#main(directory)
