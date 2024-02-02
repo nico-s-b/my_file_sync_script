@@ -40,6 +40,8 @@ def tree(dir_path: Path, error_files, mismatch_files,directory, prefix: str=''):
     with each line prefixed by the same characters
     """
     contents = list(dir_path.iterdir())
+    if Path(__file__) in contents:
+        contents.remove(Path(__file__))
     # contents each get pointers that are ├── with a final └── :
     pointers = [tee] * (len(contents) - 1) + [last]
     for pointer, path in zip(pointers, contents):
@@ -51,14 +53,15 @@ def tree(dir_path: Path, error_files, mismatch_files,directory, prefix: str=''):
             yield from tree(path, error_files, mismatch_files, directory, prefix=prefix+extension)
 
 def dirSideToSidePrint(directory1, directory2,error_files, mismatch_files):
-    fixwidht = 60
+    fixwidht = 70
+    print("{:<70} {:<70}".format(str(directory1), str(directory2)))
     for line1,line2 in zip_longest(tree(directory1,error_files,mismatch_files,directory1),tree(directory2,error_files,mismatch_files,directory2),fillvalue = ""):
         if (line1 == ""):
-            line1 = " "*60
-        if (len(line1) > 60):
-            line1 = line1[:60]
+            line1 = " "*fixwidht
+        if (len(line1) > fixwidht):
+            line1 = line1[:fixwidht]
         else:
-            line1 = line1 + " "*(60-len(line1))
+            line1 = line1 + " "*(fixwidht-len(line1))
         print (line1 + line2)
 
 def getFilesFromPath(dir_path: Path, pathlist, deep = True):
@@ -128,6 +131,10 @@ def main_workflow(directory1,directory2,dir_name):
     mismatch_files = dcomp.diff_files
     dirLeftErrors = dcomp.left_only
     dirRigthErrors = dcomp.right_only
+    if os.path.basename(__file__) in dirLeftErrors:
+        dirLeftErrors.remove(os.path.basename(__file__))
+    elif os.path.basename(__file__) in dirRigthErrors:
+        dirRigthErrors.remove(os.path.basename(__file__))
     error_files = dirLeftErrors + dirRigthErrors
 
     print(Fore.GREEN + '\nComparación de árboles de ambos directorios: '+ Style.RESET_ALL)
@@ -149,12 +156,13 @@ def main_workflow(directory1,directory2,dir_name):
     if len(dirRigthErrors) > 0:
         objectsToDuplicate(dirRigthErrors,files_to_copy,dirs_to_copy,directory2,directory1)
     
+
     common_dirs_paths = []
     common_dirs = dcomp.common_dirs
     if len(common_dirs) > 0:
         dirPathCollector(common_dirs,common_dirs_paths,directory1)
 
-    valid_ok = ["y","Y","1","si","ok","ya","OK"]
+    valid_ok = ["y","Y","1","si","ok","ya","OK","s"]
     if len(files_to_copy) > 0 or len(dirs_to_copy) > 0:
         describeActions(dirs_to_copy,dir_name,mismatch_files,error_files)
         op = input("¿Realizar cambios? (ingrese 1 , y ó si para aceptar): ")
@@ -169,12 +177,15 @@ def main_workflow(directory1,directory2,dir_name):
     if len(common_dirs_paths) > 0:
         print(Fore.GREEN + 'Hay subcarpetas disponibles: '+ Style.RESET_ALL)
         for dir in common_dirs_paths:
-            op = input("¿Desea analizar la subcarpeta '{}'? (ingrese 1 , y ó si para aceptar): ".format(os.path.split(dir)[1]))
-            main(dir,"THIS_IS_NOT_A_TEST")
+            op = input("¿Desea analizar la subcarpeta "+ Fore.GREEN + '{}'.format(os.path.split(dir)[1]) + Style.RESET_ALL + "? (ingrese 1 , y ó si para aceptar): ")
+            if op in valid_ok:
+                main(Path(dir),"THIS_IS_NOT_A_TEST")
+            else:
+                print("No se analizará la carpeta mencionada")
 
 def main(directory1,test = "SI"):
     dir_name = os.path.basename(directory1)
-    print(Fore.GREEN + "Examinando la carpeta '{}'".format(dir_name) + Style.RESET_ALL)
+    print(Fore.BLUE + "Examinando la carpeta '{}'".format(dir_name) + Style.RESET_ALL)
     if directory1.__str__()[:11] == "D:\OneDrive":
         directory2 = pathOneDriveToD(directory1)
     else:
@@ -186,9 +197,9 @@ def main(directory1,test = "SI"):
     
     #DIRECTORIOS DE PRUEBAS
     if test == "SI":
-        directory1 = Path("D:\OneDrive\Proyectos_Code\Python_STUF_I_MADE\\testing")
+        directory1 = Path("D:\OneDrive\Proyectos_Code\Python_STUFF_I_MADE\\testing")
         dir_name = os.path.basename(directory1)
-        directory2 = Path("D:\OneDrive\Proyectos_Code\Python_STUF_I_MADE\\testing2")
+        directory2 = Path("D:\OneDrive\Proyectos_Code\Python_STUFF_I_MADE\\testing2")
 
     print("Paths examinados:")
     print(directory1)
