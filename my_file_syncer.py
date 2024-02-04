@@ -96,9 +96,12 @@ def describeActions(dirs_to_copy,dir_name,mismatch_files,error_files):
 
 def excecuteActions(files_to_copy,dirs_to_copy):
     for file in files_to_copy:
+        print(".", end = '')
         shutil.copy2(file[0],file[1])
     for dir in dirs_to_copy:
+        print(".", end = '')
         shutil.copytree(dir[0],dir[1])
+    print("")
 
 def filesToActualize(mismatch_files,directory1,directory2,files_to_copy):
     for file in mismatch_files:
@@ -123,26 +126,31 @@ def dirPathCollector(common_dirs,common_dirs_paths,directory):
         dir_path = makeFilePath(directory,dir)
         common_dirs_paths.append(dir_path)
 
-def main_workflow(directory1,directory2,dir_name):
-
+def main_workflow(directory1,directory2,dir_name,config):
+    print(".", end = '')
     dcomp = filecmp.dircmp(directory1,directory2)
-    
-    math_files = dcomp.same_files
+    print(".", end = '')
+    match_files = dcomp.same_files
+    print(".", end = '')
     mismatch_files = dcomp.diff_files
+    print(".", end = '')
     dirLeftErrors = dcomp.left_only
+    print(".", end = '')
     dirRigthErrors = dcomp.right_only
+    print(".", end = '')
     if os.path.basename(__file__) in dirLeftErrors:
         dirLeftErrors.remove(os.path.basename(__file__))
     elif os.path.basename(__file__) in dirRigthErrors:
         dirRigthErrors.remove(os.path.basename(__file__))
     error_files = dirLeftErrors + dirRigthErrors
+    print(".", end = '')
 
     print(Fore.GREEN + '\nComparación de árboles de ambos directorios: '+ Style.RESET_ALL)
     dirSideToSidePrint(directory1, directory2,error_files,mismatch_files)
     #print(Fore.RED + 'some red text'+ Style.RESET_ALL)
 
     print(Fore.GREEN + "\nComparacion dentro de los directorios '{}'".format(dir_name) + Style.RESET_ALL)
-    print("Iguales :", math_files)
+    print("Iguales :", match_files)
     print("Diferentes :", mismatch_files)
     print("Faltantes :", error_files)
 
@@ -165,11 +173,14 @@ def main_workflow(directory1,directory2,dir_name):
     valid_ok = ["y","Y","1","si","ok","ya","OK","s"]
     if len(files_to_copy) > 0 or len(dirs_to_copy) > 0:
         describeActions(dirs_to_copy,dir_name,mismatch_files,error_files)
-        op = input("¿Realizar cambios? (ingrese 1 , y ó si para aceptar): ")
-        if op in valid_ok:
+        if config == "AUTOMATICO": 
             excecuteActions(files_to_copy,dirs_to_copy)
         else:
-            print("No se realizaron las acciones mencionadas")
+            op = input("¿Realizar cambios? (ingrese 1 , y ó si para aceptar): ")
+            if op in valid_ok:
+                excecuteActions(files_to_copy,dirs_to_copy)
+            else:
+                print("No se realizaron las acciones mencionadas")
     else:
         print("No hay acciones que realizar en la carpeta '{}'".format(os.path.basename(directory1)))
     
@@ -177,13 +188,18 @@ def main_workflow(directory1,directory2,dir_name):
     if len(common_dirs_paths) > 0:
         print(Fore.GREEN + 'Hay subcarpetas disponibles: '+ Style.RESET_ALL)
         for dir in common_dirs_paths:
-            op = input("¿Desea analizar la subcarpeta "+ Fore.GREEN + '{}'.format(os.path.split(dir)[1]) + Style.RESET_ALL + "? (ingrese 1 , y ó si para aceptar): ")
-            if op in valid_ok:
-                main(Path(dir),"THIS_IS_NOT_A_TEST")
-            else:
-                print("No se analizará la carpeta mencionada")
+            if config == "AUTOMATICO": 
+                main(Path(dir),"AUTOMATICO")
+            else: 
+                op = input("¿Desea analizar la subcarpeta "+ Fore.GREEN + '{}'.format(os.path.split(dir)[1]) + Style.RESET_ALL + "? \n(ingrese 1 , y ó si para aceptar | ingrese 2 para CONTINUAR EN MODO AUTOMATICO: ")
+                if op in valid_ok:
+                    main(Path(dir),"THIS_IS_NOT_A_TEST")
+                elif op == "2":
+                    main(Path(dir),"AUTOMATICO")
+                else:
+                    print("No se analizará la carpeta mencionada")
 
-def main(directory1,test = "SI"):
+def main(directory1,config = "SI"):
     dir_name = os.path.basename(directory1)
     print(Fore.BLUE + "Examinando la carpeta '{}'".format(dir_name) + Style.RESET_ALL)
     if directory1.__str__()[:11] == "D:\OneDrive":
@@ -192,11 +208,11 @@ def main(directory1,test = "SI"):
         directory2 = pathDToOneDrive(directory1)
     if not(os.path.isdir(directory2)):
         print("{} no es un directorio válido".format(directory2))
-        if test != "SI":
+        if config != "SI":
             return
     
     #DIRECTORIOS DE PRUEBAS
-    if test == "SI":
+    if config == "SI":
         directory1 = Path("D:\OneDrive\Proyectos_Code\Python_STUFF_I_MADE\\testing")
         dir_name = os.path.basename(directory1)
         directory2 = Path("D:\OneDrive\Proyectos_Code\Python_STUFF_I_MADE\\testing2")
@@ -204,7 +220,7 @@ def main(directory1,test = "SI"):
     print("Paths examinados:")
     print(directory1)
     print(directory2)
-    main_workflow(directory1,directory2,dir_name)
+    main_workflow(directory1,directory2,dir_name,config)
 
 
 #set current working directory as the directory where this script is located
