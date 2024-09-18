@@ -8,49 +8,60 @@ import sys
 from functools import partial
 import humanize
 
-valid_ok = ["y","Y","1","si","ok","ya","OK","s","sí"]
+"""
+Autor: Nicolás Sepúlveda
+Ver: Sept 2024
+Instrucciones: crear una copia del script en el directorio de interés. El directorio 
+debe tener el mismo nombre y estructura tanto en OneDrive y disco exteron como en el 
+disco local para que el script sea útil. Correr el script en el directorio de interés.
+"""
 
-#Instrucciones: crear una copia del script en el directorio de interés. El directorio debe tener el mismo nombre y estructura
-#tanto en OneDrive como en el disco D: para que el script sea útil. Correr el script en el directorio de interés.
+valid_ok = ["y","Y","1","si","ok","ya","OK","s","sí"]
+# Global Paths. Modificar de acuerdo a Root de Backups y Disco Local
+OneDrivePath = "D:\OneDrive"
+OneDriveInsert = "\\OneDrive\\"
+ExternalDiskPath = "E:\Backup"
+ExternalInsert = "E:\\Backup\\"
+LocalDiskPath = "D:\\"
 
 def forcePath(directory):
-    if directory.__str__()[:11] == "D:\OneDrive":
-        dir = directory.__str__()[:2]+directory.__str__()[11:]
-    elif directory.__str__()[:9] == "E:\Backup":
-        dir = "D:\\"+directory.__str__()[9:]
+    if directory.__str__()[:11] == OneDrivePath:
+        dir = directory.__str__()[:2] + directory.__str__()[11:]
+    elif directory.__str__()[:9] == ExternalDiskPath:
+        dir = LocalDiskPath + directory.__str__()[9:]
     else:
         dir = directory
     return Path(dir)
 
 def pathOneDriveToD(directory):
-    if directory.__str__()[:11] == "D:\OneDrive":
-        dir = directory.__str__()[:2]+directory.__str__()[11:]
+    if directory.__str__()[:11] == OneDrivePath:
+        dir = directory.__str__()[:2] + directory.__str__()[11:]
         return Path(dir)
 
 def pathDToOneDrive(directory):
-    if directory.__str__()[:11] != "D:\OneDrive":
-        dir = directory.__str__()[:2]+"\\OneDrive\\"+directory.__str__()[3:]
+    if directory.__str__()[:11] != OneDrivePath:
+        dir = directory.__str__()[:2] + OneDriveInsert + directory.__str__()[3:]
         return Path(dir)
 
 def pathEToD(directory):
-    if directory.__str__()[:9] == "E:\Backup":
-        dir = "D:\\"+directory.__str__()[9:]
+    if directory.__str__()[:9] == ExternalDiskPath:
+        dir = LocalDiskPath + directory.__str__()[9:]
         return Path(dir)
 
 def pathDToE(directory):
-    if directory.__str__()[:9] != "E:\Backup":
-        dir = "E:\\Backup\\"+directory.__str__()[3:]
+    if directory.__str__()[:9] != ExternalDiskPath:
+        dir = ExternalInsert + directory.__str__()[3:]
         return Path(dir)
 
 def definePaths(directory1,config):
     if config == "ex":
         long = 9
-        base_path = "E:\Backup"
+        base_path = ExternalDiskPath
         pathToD = pathEToD
         pathDTo = pathDToE
     else:
         long = 11
-        base_path = "D:\OneDrive"
+        base_path = OneDrivePath
         pathToD = pathOneDriveToD
         pathDTo = pathDToOneDrive
 
@@ -391,7 +402,8 @@ def main(directory1,config,autoMode = 0,firstTime = 1):
     if firstTime == 1:
         print("¿Desea ejecutar en modo " + Fore.RED + "Automático" + Style.RESET_ALL + "?: " )
         print("ingrese 1 , Y ó si para aceptar")
-        print("ingrese 2 si desea FULL AUTO sin ignorar directorios")
+        if config != "ex":
+            print("ingrese 2 si desea FULL AUTO sin ignorar directorios")
         op = input()
         if op == "2":
             print("Ejecutando en modo " + Fore.RED + "FULL Automático" + Style.RESET_ALL)
