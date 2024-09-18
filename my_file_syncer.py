@@ -60,9 +60,10 @@ def definePaths(directory1,config):
         directory2 = pathDTo(directory1)
 
     if not(os.path.isdir(directory2)):
-        print("{} no es un directorio válido".format(directory2))
-        if config != "SI":
-            return None
+        print("{} no existe".format(directory2))
+        print("Creando...")
+        print("¡Ejecutar nuevamente si es necesario!")
+        directory2 = os.makedirs(os.path.abspath(directory2))
     return directory2
 
 def paintingNames(path: Path,error_files,mismatch_files,directory):
@@ -166,9 +167,11 @@ def describeActions(dirs_to_copy,dir_name,mismatch_files,error_files):
     print()
 
 def excecuteActions(files_to_copy,dirs_to_copy):
+    print("Copiando archivos...")
     for file in files_to_copy:
         print(".", end = '')
         shutil.copy2(file[0],file[1])
+    print("Copiando carpetas...")
     for dir in dirs_to_copy:
         print(".", end = '')
         shutil.copytree(dir[0],dir[1])
@@ -262,27 +265,30 @@ def main_workflow(directory1,directory2,dir_name,config,autoMode):
     # Detectar posibles directorios que se deseen ignorar por su tamaño mayor. Esto se ejecutará 
     # siempre que se incluya OneDrive. O sea, NO se ejecuta si sólo se considera disco externo (config = "ex")
     if config != "ex":
-        pathlist = []
-        pathlist = getFilesFromPath(directory1,pathlist,False,False)
-        ignoreList = searchForBigDir(pathlist)
+        if autoMode == 2:
+            ignoreList = []
+        else:
+            pathlist = []
+            pathlist = getFilesFromPath(directory1,pathlist,False,False)
+            ignoreList = searchForBigDir(pathlist)
 
-        if ignoreList:
-            print(Fore.RED + '\nATENCIÓN' + Style.RESET_ALL)
-            print("Los siguientes directorios tienen tamaño mayor a 4 GB: ")
-            for dirname in ignoreList:
-                print('{:>8}'.format( humanize.naturalsize(getFolderSize(Path(dirname))) ) + " " + Fore.CYAN + dirname + Style.RESET_ALL)
-            op = ignoreMenu()
-            # Explicitación de opciones disponibles
-            if op == 3:
-                ignoreList = selectIgnoredDirs(ignoreList)
-            elif op == 2:
-                ignoreList = [os.path.basename(Path(dir)) for dir in ignoreList]
-            elif op == 1:
-                ignoreList = []
-        if ignoreList:
-            print("Carpetas que se " + Fore.RED + "ignorarán" + Style.RESET_ALL + ": ")
-            for dir in ignoreList:
-                print (Fore.CYAN +  os.path.abspath(Path(dir)) + Style.RESET_ALL)
+            if ignoreList:
+                print(Fore.RED + '\nATENCIÓN' + Style.RESET_ALL)
+                print("Los siguientes directorios tienen tamaño mayor a 4 GB: ")
+                for dirname in ignoreList:
+                    print('{:>8}'.format( humanize.naturalsize(getFolderSize(Path(dirname))) ) + " " + Fore.CYAN + dirname + Style.RESET_ALL)
+                op = ignoreMenu()
+                # Explicitación de opciones disponibles
+                if op == 3:
+                    ignoreList = selectIgnoredDirs(ignoreList)
+                elif op == 2:
+                    ignoreList = [os.path.basename(Path(dir)) for dir in ignoreList]
+                elif op == 1:
+                    ignoreList = []
+            if ignoreList:
+                print("Carpetas que se " + Fore.RED + "ignorarán" + Style.RESET_ALL + ": ")
+                for dir in ignoreList:
+                    print (Fore.CYAN +  os.path.abspath(Path(dir)) + Style.RESET_ALL)
     else:
         ignoreList = []
 
@@ -330,7 +336,7 @@ def main_workflow(directory1,directory2,dir_name,config,autoMode):
     
     if len(files_to_copy) > 0 or len(dirs_to_copy) > 0:
         describeActions(dirs_to_copy,dir_name,mismatch_files,error_files)
-        if autoMode == 1:
+        if autoMode == 1 or autoMode == 2:
             excecuteActions(files_to_copy,dirs_to_copy)
         else:
             op = input("¿Realizar cambios? (ingrese 1 , Y ó si para aceptar): ")
@@ -346,7 +352,7 @@ def main_workflow(directory1,directory2,dir_name,config,autoMode):
     if len(common_dirs_paths) > 0:
         print(Fore.YELLOW + 'Hay subcarpetas disponibles: '+ Style.RESET_ALL)
         for dir in common_dirs_paths:
-            if autoMode == 1:
+            if autoMode == 1 or autoMode == 2:
                 print("Entrando en "+ Fore.GREEN + '{}'.format(os.path.split(dir)[1]) + Style.RESET_ALL)
                 main(Path(dir),config, 1,0)
             else: 
@@ -368,22 +374,33 @@ def main(directory1,config,autoMode = 0,firstTime = 1):
         directory2 = definePaths(directory1, "ex")
         directory3 = definePaths(directory1, "onedrive")
     else:
+        both = 0
+        # Config = ex -> directory2 will be External Disk, otherwise OneDrive
         directory2 = definePaths(directory1, config)
-    
+    if directory2 is None:
+        sys.exit("Directorio gemelo no existe\n")
     if autoMode == 1:
         print(Fore.RED + "Trabajando en modo Automático" + Style.RESET_ALL)
     print("Paths a examinar:")
     print(Fore.CYAN + os.path.abspath(directory1))
     print(os.path.abspath(directory2) + Style.RESET_ALL)
-    if directory2 is None:
-        sys.exit("Directorio gemelo no válido")
+    if config == "both":
+        print(Fore.CYAN + os.path.abspath(directory3) + Style.RESET_ALL)
+
     
     if firstTime == 1:
         print("¿Desea ejecutar en modo " + Fore.RED + "Automático" + Style.RESET_ALL + "?: " )
         print("ingrese 1 , Y ó si para aceptar")
-        if input() in valid_ok:
+        print("ingrese 2 si desea FULL AUTO sin ignorar directorios")
+        op = input()
+        if op == "2":
+            print("Ejecutando en modo " + Fore.RED + "FULL Automático" + Style.RESET_ALL)
+            autoMode = 2
+        elif op in valid_ok:
+            print("Ejecutando en modo " + Fore.RED + "Automático" + Style.RESET_ALL)
             autoMode = 1
         else:
+            print("Ejecutando en modo " + Fore.LIGHTGREEN_EX + "Normal" + Style.RESET_ALL)
             autoMode = 0
 
     main_workflow(directory1,directory2,dir_name,config,autoMode)
