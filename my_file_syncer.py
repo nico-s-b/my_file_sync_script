@@ -74,7 +74,7 @@ def definePaths(directory1,config):
         print("{} no existe".format(directory2))
         print("Creando...")
         print("¡Ejecutar nuevamente si es necesario!")
-        directory2 = os.makedirs(os.path.abspath(directory2))
+        os.makedirs(os.path.abspath(directory2))
     return directory2
 
 def paintingNames(path: Path,error_files,mismatch_files,directory):
@@ -272,6 +272,8 @@ def ignoredDirsMenu(num):
                 print("Ocurrió algún error, inténtelo de nuevo")
     return ignoredNums
 
+ignoredFinalList = []
+
 def main_workflow(directory1,directory2,dir_name,config,autoMode):
     # Detectar posibles directorios que se deseen ignorar por su tamaño mayor. Esto se ejecutará 
     # siempre que se incluya OneDrive. O sea, NO se ejecuta si sólo se considera disco externo (config = "ex")
@@ -296,6 +298,7 @@ def main_workflow(directory1,directory2,dir_name,config,autoMode):
                     ignoreList = [os.path.basename(Path(dir)) for dir in ignoreList]
                 elif op == 1:
                     ignoreList = []
+                ignoredFinalList.extend(ignoreList)
             if ignoreList:
                 print("Carpetas que se " + Fore.RED + "ignorarán" + Style.RESET_ALL + ": ")
                 for dir in ignoreList:
@@ -438,6 +441,10 @@ if __name__ == '__main__':
         sys.argv.append("THIS_IS_NOT_A_TEST")
     try:
         main(directory,sys.argv[1])
+        if ignoredFinalList:
+            print(Fore.CYAN + "¡Recordar! " + Style.RESET_ALL + "Directorios ignorados:")
+            for dir in ignoredFinalList:
+                print(dir)
     except KeyboardInterrupt:
         print('\n\nInterrupted\n')
         try:
